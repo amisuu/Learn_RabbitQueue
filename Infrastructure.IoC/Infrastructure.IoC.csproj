@@ -11,7 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Application\Banking.Application.csproj" />
+    <ProjectReference Include="..\Data\Banking.Data.csproj" />
     <ProjectReference Include="..\Domain.Core\Domain.Core.csproj" />
+    <ProjectReference Include="..\Domain\Banking.Domain.csproj" />
     <ProjectReference Include="..\Infrastructure.Bus\Infrastructure.Bus.csproj" />
   </ItemGroup>
 
