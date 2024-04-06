@@ -7,9 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Commands\" />
-    <Folder Include="CommandsHandlers\" />
-    <Folder Include="Events\" />
     <Folder Include="EventsHandlers\" />
   </ItemGroup>
 

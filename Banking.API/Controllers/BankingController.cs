@@ -1,4 +1,5 @@
-﻿using Banking.Application.Interfaces;
+﻿using Banking.Application.Dto;
+using Banking.Application.Interfaces;
 using Banking.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,14 @@ namespace Banking.API.Controllers
         public ActionResult<IEnumerable<Account>> Get()
         {
             return Ok(_accountService.GetAccounts());
+        }
+
+        [HttpPost]
+        public IActionResult Post([FromBody] AccountTransfer accountTransfer)
+        {
+            _accountService.Transfer(accountTransfer);
+
+            return Ok(accountTransfer);
         }
     }
 }

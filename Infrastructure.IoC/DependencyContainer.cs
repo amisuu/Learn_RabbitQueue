@@ -2,9 +2,12 @@
 using Banking.Application.Services;
 using Banking.Data.Context;
 using Banking.Data.Repository;
+using Banking.Domain.Commands;
+using Banking.Domain.CommandsHandlers;
 using Banking.Domain.Interfaces;
 using Domain.Core.Bus;
 using Infrastructure.Bus;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.IoC
@@ -19,6 +22,8 @@ namespace Infrastructure.IoC
 
             services.AddTransient<IAccountRepository, AccountRepository>();
             services.AddTransient<BankingDbContext>();
+
+            services.AddTransient<IRequestHandler<CreateTransferCommand, bool>, TransferCommandHandler>();
         }
     }
 }
