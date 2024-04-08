@@ -2,11 +2,12 @@
 using Domain.Core.Commands;
 using Domain.Core.Events;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
-using System.Text.Json.Nodes;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Infrastructure.Bus
 {
@@ -15,10 +16,13 @@ namespace Infrastructure.Bus
         private readonly IMediator _mediator;
         private readonly Dictionary<string, List<Type>> _hnadlers;
         private readonly List<Type> _eventTypes;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        public RabbitMQBus(IMediator mediator)
+        public RabbitMQBus(IMediator mediator,
+                           IServiceScopeFactory serviceScopeFactory)
         {
             _mediator = mediator;
+            _serviceScopeFactory = serviceScopeFactory;
             _hnadlers = new Dictionary<string, List<Type>>();
             _eventTypes = new List<Type>();
         }
@@ -53,7 +57,7 @@ namespace Infrastructure.Bus
 
             if (!_eventTypes.Contains(typeof(T)))
             {
-                _eventTypes.Add(typeof(TH));
+                _eventTypes.Add(typeof(T));
             }
 
             if (!_hnadlers.ContainsKey(eventName))
@@ -61,10 +65,10 @@ namespace Infrastructure.Bus
                 _hnadlers.Add(eventName, new List<Type>());
             }
 
-            if (_hnadlers[eventName].Any(x => x.GetType() == handlerType))
+            if (_hnadlers[eventName].Any(s => s.GetType() == handlerType))
             {
-                throw new ArgumentException($"Handler type {handlerType.Name} already is registered for {eventName}",
-                    nameof(handlerType));
+                throw new ArgumentException(
+                    $"Handler Type {handlerType.Name} already is registered for '{eventName}'", nameof(handlerType));
             }
 
             _hnadlers[eventName].Add(handlerType);
@@ -74,8 +78,11 @@ namespace Infrastructure.Bus
 
         private void StartBasicConsume<T>() where T : Event
         {
-            var factory = new ConnectionFactory() { HostName = "localhost",
-                                                    DispatchConsumersAsync = true};
+            var factory = new ConnectionFactory()
+            {
+                HostName = "localhost",
+                DispatchConsumersAsync = true
+            };
 
             var connection = factory.CreateConnection();
             var channel = connection.CreateModel();
@@ -93,16 +100,14 @@ namespace Infrastructure.Bus
         private async Task Consumer_Received(object sender, BasicDeliverEventArgs e)
         {
             var eventName = e.RoutingKey;
-            string message = Encoding.UTF8.GetString(e.Body.ToArray());
+            var message = Encoding.UTF8.GetString(e.Body.ToArray());
 
             try
             {
                 await ProcessEvent(eventName, message).ConfigureAwait(false);
             }
-            catch (Exception exc)
+            catch (Exception ex)
             {
-
-                throw;
             }
         }
 
@@ -110,20 +115,16 @@ namespace Infrastructure.Bus
         {
             if (_hnadlers.ContainsKey(eventName))
             {
+                var scope = _serviceScopeFactory.CreateScope();
                 var subscriptions = _hnadlers[eventName];
                 foreach (var subscription in subscriptions)
                 {
-                    var handler = Activator.CreateInstance(subscription);
-                    if (handler == null)
-                    {
-                        continue;
-                    }
-
-                    var eventType = _eventTypes.SingleOrDefault(e => e.Name == eventName);
+                    var handler = scope.ServiceProvider.GetService(subscription);
+                    if (handler == null) continue;
+                    var eventType = _eventTypes.SingleOrDefault(t => t.Name == eventName);
                     var @event = JsonConvert.DeserializeObject(message, eventType);
-                    var concreteType = typeof(IEventHandler<>).MakeGenericType(eventType);
-                    await (Task)concreteType.GetMethod("Handle").Invoke(handler, new object[] { @event});
-
+                    var conreteType = typeof(IEventHandler<>).MakeGenericType(eventType);
+                    await (Task)conreteType.GetMethod("Handle").Invoke(handler, new object[] { @event });
                 }
             }
         }

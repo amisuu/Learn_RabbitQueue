@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Banking.Domain.CommandsHandlers
 {
-    public class TransferCommandHandler : IRequestHandler<TransferCommand, bool>
+    public class TransferCommandHandler : IRequestHandler<CreateTransferCommand, bool>
     {
         private readonly IEventBus _eventBus;
 
@@ -14,7 +14,7 @@ namespace Banking.Domain.CommandsHandlers
             _eventBus = eventBus;
         }
 
-        public Task<bool> Handle(TransferCommand request, CancellationToken cancellationToken)
+        public Task<bool> Handle(CreateTransferCommand request, CancellationToken cancellationToken)
         {
             //publish event to rabbit
             _eventBus.Publish(new TransferCreatedEvent(
